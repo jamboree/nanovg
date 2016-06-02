@@ -71,7 +71,8 @@ struct NVGstate {
 	float strokeWidth;
 	float miterLimit;
 	int lineJoin;
-	int lineCap;
+	int lineCapStart;
+    int lineCapEnd;
 	float alpha;
 	float xform[6];
 	NVGscissor scissor;
@@ -573,7 +574,8 @@ void nvgReset(NVGcontext* ctx)
 	nvg__setPaintColor(&state->stroke, nvgRGBA(0,0,0,255));
 	state->strokeWidth = 1.0f;
 	state->miterLimit = 10.0f;
-	state->lineCap = NVG_BUTT;
+	state->lineCapStart = NVG_BUTT;
+    state->lineCapEnd = NVG_BUTT;
 	state->lineJoin = NVG_MITER;
 	state->alpha = 1.0f;
 	nvgTransformIdentity(state->xform);
@@ -605,7 +607,15 @@ void nvgMiterLimit(NVGcontext* ctx, float limit)
 void nvgLineCap(NVGcontext* ctx, int cap)
 {
 	NVGstate* state = nvg__getState(ctx);
-	state->lineCap = cap;
+	state->lineCapStart = cap;
+    state->lineCapEnd = cap;
+}
+
+void nvgLineCaps(NVGcontext* ctx, int capStart, int capEnd)
+{
+    NVGstate* state = nvg__getState(ctx);
+    state->lineCapStart = capStart;
+    state->lineCapEnd = capEnd;
 }
 
 void nvgLineJoin(NVGcontext* ctx, int join)
@@ -1606,7 +1616,7 @@ static void nvg__calculateJoins(NVGcontext* ctx, float w, int lineJoin, float mi
 }
 
 
-static int nvg__expandStroke(NVGcontext* ctx, float w, int lineCap, int lineJoin, float miterLimit)
+static int nvg__expandStroke(NVGcontext* ctx, float w, int lineCapStart, int lineCapEnd, int lineJoin, float miterLimit)
 {
 	NVGpathCache* cache = ctx->cache;
 	NVGvertex* verts;
@@ -1628,10 +1638,15 @@ static int nvg__expandStroke(NVGcontext* ctx, float w, int lineCap, int lineJoin
 			cverts += (path->count + path->nbevel*5 + 1) * 2; // plus one for loop
 		if (loop == 0) {
 			// space for caps
-			if (lineCap == NVG_ROUND) {
-				cverts += (ncap*2 + 2)*2;
+			if (lineCapStart == NVG_ROUND) {
+				cverts += ncap*2 + 2;
 			} else {
-				cverts += (3+3)*2;
+				cverts += 3+3;
+			}
+			if (lineCapEnd == NVG_ROUND) {
+				cverts += ncap*2 + 2;
+			} else {
+				cverts += 3+3;
 			}
 		}
 	}
@@ -1674,11 +1689,11 @@ static int nvg__expandStroke(NVGcontext* ctx, float w, int lineCap, int lineJoin
 			dx = p1->x - p0->x;
 			dy = p1->y - p0->y;
 			nvg__normalize(&dx, &dy);
-			if (lineCap == NVG_BUTT)
+			if (lineCapStart == NVG_BUTT)
 				dst = nvg__buttCapStart(dst, p0, dx, dy, w, -aa*0.5f, aa);
-			else if (lineCap == NVG_BUTT || lineCap == NVG_SQUARE)
+			else if (lineCapStart == NVG_BUTT || lineCapStart == NVG_SQUARE)
 				dst = nvg__buttCapStart(dst, p0, dx, dy, w, w-aa, aa);
-			else if (lineCap == NVG_ROUND)
+			else if (lineCapStart == NVG_ROUND)
 				dst = nvg__roundCapStart(dst, p0, dx, dy, w, ncap, aa);
 		}
 
@@ -1705,11 +1720,11 @@ static int nvg__expandStroke(NVGcontext* ctx, float w, int lineCap, int lineJoin
 			dx = p1->x - p0->x;
 			dy = p1->y - p0->y;
 			nvg__normalize(&dx, &dy);
-			if (lineCap == NVG_BUTT)
+			if (lineCapEnd == NVG_BUTT)
 				dst = nvg__buttCapEnd(dst, p1, dx, dy, w, -aa*0.5f, aa);
-			else if (lineCap == NVG_BUTT || lineCap == NVG_SQUARE)
+			else if (lineCapEnd == NVG_BUTT || lineCapEnd == NVG_SQUARE)
 				dst = nvg__buttCapEnd(dst, p1, dx, dy, w, w-aa, aa);
-			else if (lineCap == NVG_ROUND)
+			else if (lineCapEnd == NVG_ROUND)
 				dst = nvg__roundCapEnd(dst, p1, dx, dy, w, ncap, aa);
 		}
 
@@ -2141,9 +2156,9 @@ void nvgStroke(NVGcontext* ctx)
 	nvg__flattenPaths(ctx);
 
 	if (ctx->params.edgeAntiAlias)
-		nvg__expandStroke(ctx, strokeWidth*0.5f + ctx->fringeWidth*0.5f, state->lineCap, state->lineJoin, state->miterLimit);
+		nvg__expandStroke(ctx, strokeWidth*0.5f + ctx->fringeWidth*0.5f, state->lineCapStart, state->lineCapEnd, state->lineJoin, state->miterLimit);
 	else
-		nvg__expandStroke(ctx, strokeWidth*0.5f, state->lineCap, state->lineJoin, state->miterLimit);
+		nvg__expandStroke(ctx, strokeWidth*0.5f, state->lineCapStart, state->lineCapEnd, state->lineJoin, state->miterLimit);
 
 	ctx->params.renderStroke(ctx->params.userPtr, &strokePaint, &state->scissor, ctx->fringeWidth,
 							 strokeWidth, ctx->cache->paths, ctx->cache->npaths);

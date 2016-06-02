@@ -208,6 +208,10 @@ void nvgStrokeWidth(NVGcontext* ctx, float size);
 // Can be one of: NVG_BUTT (default), NVG_ROUND, NVG_SQUARE.
 void nvgLineCap(NVGcontext* ctx, int cap);
 
+// Sets how the end of the line (cap) is drawn,
+// Can be one of: NVG_BUTT (default), NVG_ROUND, NVG_SQUARE.
+void nvgLineCaps(NVGcontext* ctx, int capStart, int capEnd);
+
 // Sets how sharp path corners are drawn.
 // Can be one of NVG_MITER (default), NVG_ROUND, NVG_BEVEL.
 void nvgLineJoin(NVGcontext* ctx, int join);
